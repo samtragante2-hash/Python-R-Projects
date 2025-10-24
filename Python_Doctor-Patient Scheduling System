@@ -1,0 +1,497 @@
+/*
+This Python script builds a complete hospital administration system that manages doctors, patients, and appointment scheduling through SQLite databases. 
+It defines three main classes—DoctorDB, PatientDB, and AppointmentDB—each responsible for creating, reading, updating, and deleting records in their respective databases, 
+with safeguards for invalid or duplicate entries. The system allows administrators to add new doctors or patients, schedule appointments, and ensure that no doctor exceeds a 
+set number of daily appointments. It also provides a command-line interface (HospitalAdminPortal) where users can view, search, update, or reset doctor, patient, and appointment data, 
+effectively simulating a lightweight scheduling system for healthcare clinics.
+*/
+
+# Pull in project classes
+import ProjectClasses as pc
+
+# Pull in database connection
+import ProjectDBbase as db
+
+from ProjectDBbase import BDbase
+from ProjectClasses import Doctor
+from ProjectClasses import Patient
+
+class DoctorDB(BDbase):
+    def __init__(self):
+        super().__init__("Doctors.sqlite")
+
+    def add(self, name, surname, birthdate, phone, email, specialty):
+        try:
+            self.get_cursor.execute("""
+                INSERT INTO Doctors (name, surname, birthdate, phone, email, specialty)
+                VALUES (?, ?, ?, ?, ?, ?);
+            """, (name, surname, birthdate, phone, email, specialty))
+            self.get_connection.commit()
+            print(f"Added Doctor {name} {surname} successfully.")
+        except Exception as e:
+            print("An error has occurred.", e)
+
+    def update(self, doctor_id, name, surname, birthdate, phone, email, specialty):
+        try:
+            self.get_cursor.execute("""
+                UPDATE Doctors
+                SET name = ?, surname = ?, birthdate = ?, phone = ?, email = ?, specialty = ?
+                WHERE doc_id = ?;
+            """, (name, surname, birthdate, phone, email, specialty, doctor_id))
+            self.get_connection.commit()
+            print(f"Updated Doctor ID {doctor_id} successfully.")
+        except Exception as e:
+            print("An error has occurred.", e)
+
+    def delete(self, doctor_id):
+        try:
+            self.get_cursor.execute("DELETE FROM Doctors WHERE doc_id = ?;", (doctor_id,))
+            self.get_connection.commit()
+            print(f"Deleted Doctor ID: {doctor_id} successfully.")
+            return True
+        except Exception as e:
+            print("An error has occurred.", e)
+            return False
+
+    def fetch_doctor(self, doctor_name, doctor_surname):
+        try:
+            if self.get_cursor.execute("SELECT * FROM Doctors WHERE name = ? and surname = ?", (doctor_name,doctor_surname)).fetchone() is not None:
+                return self.get_cursor.execute("SELECT * FROM Doctors WHERE name = ? and surname = ?", (doctor_name,doctor_surname)).fetchone()
+            else:
+                return None
+        except Exception as e:
+            print("An error has occurred.", e)
+
+
+    def fetch_doctorById(self, id):
+        try:
+            return self.get_cursor.execute("SELECT * FROM Doctors WHERE doc_id = ?", (id,)).fetchone()
+        except Exception as e:
+            print("An error has occurred.", e)
+
+
+    def fetch_all(self):
+        try:
+            return self.get_cursor.execute("SELECT * FROM Doctors").fetchall()
+        except Exception as e:
+            print("An error has occurred.", e)
+
+    def reset_database(self):
+        try:
+            sql = """
+                DROP TABLE IF EXISTS Doctors;
+                CREATE TABLE IF NOT EXISTS Doctors (
+                    doc_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT,
+                    surname TEXT,
+                    birthdate DATE,
+                    phone TEXT,
+                    email TEXT,
+                    specialty TEXT
+                );
+            """
+            self.execute_script(sql)
+        except Exception as e:
+            print("An error occurred during reset:", e)
+        finally:
+            self.close_db()
+
+class PatientDB(BDbase):
+    def __init__(self):
+        super().__init__("Patients.sqlite")
+
+    def add(self, name, surname, birthdate, phone, email, illness):
+        try:
+            self.get_cursor.execute("""
+                INSERT INTO Patients (name, surname, birthdate, phone, email, illness)
+                VALUES (?, ?, ?, ?, ?, ?);
+            """, (name, surname, birthdate, phone, email, illness))
+            self.get_connection.commit()
+            print(f"Added Patient {name} {surname} successfully.")
+        except Exception as e:
+            print("An error has occurred.", e)
+
+    def update(self, patient_id, name, surname, birthdate, phone, email, illness):
+        try:
+            self.get_cursor.execute("""
+                UPDATE Patients
+                SET name = ?, surname = ?, birthdate = ?, phone = ?, email = ?, illness = ?
+                WHERE pat_id = ?;
+            """, (name, surname, birthdate, phone, email, illness, patient_id))
+            self.get_connection.commit()
+            print(f"Updated Patient ID {patient_id} successfully.")
+        except Exception as e:
+            print("An error has occurred.", e)
+
+    def delete(self, patient_id):
+        try:
+            self.get_cursor.execute("DELETE FROM Patients WHERE pat_id = ?;", (patient_id,))
+            self.get_connection.commit()
+            print(f"Deleted Patient ID: {patient_id} successfully.")
+            return True
+        except Exception as e:
+            print("An error has occurred while deleting a patient:", e)
+            return False
+
+    def fetch_patient(self, patient_name, patient_surname):
+        try:
+            if self.get_cursor.execute("SELECT * FROM Patients WHERE name = ? and surname = ?", (patient_name,patient_surname)).fetchone() is not None:
+                return self.get_cursor.execute("SELECT * FROM Patients WHERE name = ? and surname = ?", (patient_name,patient_surname)).fetchone()
+            else:
+                return None
+        except Exception as e:
+            print("An error has occurred.", e)
+
+    def fetch_patientById(self, id):
+        try:
+            return self.get_cursor.execute("SELECT * FROM Patients WHERE pat_id = ?", (id,)).fetchone()
+        except Exception as e:
+            print("An error has occurred.", e)
+
+    def fetch_all(self):
+        try:
+            return self.get_cursor.execute("SELECT * FROM Patients").fetchall()
+        except Exception as e:
+            print("An error has occurred while fetching patient data:", e)
+
+    def reset_database(self):
+        try:
+            sql = """
+                DROP TABLE IF EXISTS Patients;
+                CREATE TABLE IF NOT EXISTS Patients (
+                    pat_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT,
+                    surname TEXT,
+                    birthdate DATE,
+                    phone TEXT,
+                    email TEXT,
+                    illness TEXT
+                );
+            """
+            self.execute_script(sql)
+        except Exception as e:
+            print("An error occurred while resetting the patient database:", e)
+        finally:
+            self.close_db()
+
+# This needs to be updated
+class AppointementDB(BDbase):
+
+    def __init__(self):
+        super(AppointementDB, self).__init__("Appointments.sqlite")
+
+    def update(self, pat_id, doc_id, app_date, app_id):
+        try:
+            self.get_cursor.execute("""
+                UPDATE Appointments
+                SET pat_id = ?, doc_id = ?, app_date = ?
+                WHERE app_id = ?;
+            """, (pat_id, doc_id, app_date, app_id))
+            self.get_connection.commit()
+            print(f"Updated appointment ID {app_id} successfully.")
+        except Exception as e:
+            print("An error has occurred.", e)
+
+    def schedule(self, pat_id, doc_id, app_date):
+        try:
+            doctorClass = DoctorDB()
+            patientClass = PatientDB()
+            dateCheck = self.get_cursor.execute("SELECT COUNT(*) FROM Appointments WHERE doc_id = ? AND app_date = ?", (doc_id,app_date)).fetchone()[0]
+            docCheck = doctorClass.fetch_doctorById(doc_id)
+            patCheck = patientClass.fetch_patientById(pat_id)
+            # docCheck = self.get_cursor.execute("SELECT COUNT(*) FROM Doctors WHERE doc_id = ?", (doc_id,)).fetchone()[0]
+            # patCheck = self.get_cursor.execute("SELECT COUNT(*) FROM Patients WHERE pat_id = ?", (pat_id,)).fetchone()[0]
+            if dateCheck < 16 and docCheck is not None and patCheck is not None:
+                self.get_cursor.execute("""
+                    INSERT INTO Appointments (pat_id, doc_id, app_date)
+                    VALUES (?, ?, ?);
+                """, (pat_id, doc_id, app_date))
+                self.get_connection.commit()
+                print(f"Appointment scheduled for Patient id {pat_id} with doctor id {doc_id} on {app_date}.")
+            elif dateCheck < 16 and docCheck is None and patCheck is not None:
+                print("That doctor does not exist in our system.")
+            elif dateCheck < 16 and docCheck is not None and patCheck is None:
+                print("That patient does not exist in our system.")
+            elif dateCheck < 16 and docCheck is None and patCheck is None:
+                print("Both the patient and the doctor do not exist in our system.")
+            else:
+                print("That doctor has too many appointments for that day.")
+        except Exception as e:
+            print("An error has occurred.", e)
+
+    def delete(self, app_id):
+        try:
+            self.get_cursor.execute("DELETE FROM Appointments WHERE app_id = ?;", (app_id,))
+            self.get_connection.commit()
+            print(f"Deleted Patient ID: {app_id} successfully.")
+            return True
+        except Exception as e:
+            print("An error has occurred while deleting the appointment:", e)
+            return False
+
+    def fetch_appointment(self, docId,patId,appDate):
+        try:
+            if self.get_cursor.execute("SELECT * FROM Appointments WHERE doc_id = ? and pat_id = ? and app_date = ?", (docId,patId,appDate)).fetchone() is not None:
+                return self.get_cursor.execute("SELECT * FROM Appointments WHERE doc_id = ? and pat_id = ? and app_date = ?", (docId,patId,appDate)).fetchone()
+            else:
+                return None
+        except Exception as e:
+            print("An error has occurred.", e)
+
+    def fetch_all(self):
+        try:
+            return self.get_cursor.execute("SELECT * FROM Appointments ORDER BY app_date DESC, doc_id DESC").fetchall()
+        except Exception as e:
+            print("An error has occurred while fetching appointment data:", e)
+
+    def reset_database(self):
+        try:
+            sql = """
+                DROP TABLE IF EXISTS Appointments;
+
+                CREATE TABLE Appointments (
+                    app_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
+                    pat_id INTEGER NOT NULL,
+                    doc_id INTEGER NOT NULL,
+                    app_date DATE
+                     );  
+            """
+            super().execute_script(sql)
+        except Exception as e:
+            print("An error occurred", e)
+        finally:
+            super().close_db()
+
+class HospitalAdminPortal:
+
+    def run(self):
+
+        inv_options = {"Add doctor": "Add a doctor to the database", # Completed
+                       "Add patient": "Add a patient to the database", # Completed
+                       "Schedule": "Schedule an appointment", # Completed
+                       "Lookup doctor": "lookup a specific doctor", # Completed
+                       "Lookup patient": "lookup a specific patient", # Completed
+                       "Lookup appointment": "lookup a specific appointment", #Completed
+                       "View doctors": "View list of doctors", # Complete
+                       "View patients": "View list of Patients", # Completed
+                       "View appointments": "View list of appointments", # Completed order by date and doctor
+                       "Update appointment": "Update an appointment", # Completed
+                       "Update doctor": "Update a doctor's information", # Completed
+                       "Update patient": "Update a patient's information", # Completed
+                       "Delete doctor": "Delete a doctor from the database", # Completed
+                       "Delete patient": "Delete a patient from the database", # Completed
+                       "Delete appointment": "Delete an appointment from the database", # Completed
+                       "Reset doctor": "Clear the entire list of doctors", # Completed
+                       "Reset patient": "Clear the entire list of patients", # Completed
+                       "Reset Appointments": "Clear the entire list of appointments", # Completed
+                       "Exit": "Exit the program" # Completed
+                       }
+
+        print("Welcome to the hospital admin portal, please choose a selection")
+
+        user_selection = ""
+        while user_selection != "exit":
+            print("*** Option List ***")
+            for option in inv_options.items():
+                print(option)
+
+            user_selection = input("Select an option: ").lower()
+            doctor = DoctorDB()
+            patient = PatientDB()
+            appointment = AppointementDB()
+
+            # Add doctor
+            if user_selection == "add doctor":
+                specialty = input("Enter the doctor's Specialty: ")
+                name = input("Enter the doctor's first name: ")
+                surname = input("Enter the doctor's last name: ")
+                birthdate = input("Enter the doctor's birthday: ")
+                phone = input("Enter the doctor's phone: ")
+                email = input("Enter the doctor's email: ")
+                doctor.add(name, surname, birthdate, phone, email, specialty)
+                print("Done \n")
+                input("Press return to continue")
+
+            # Add patient
+            elif user_selection == "add patient":
+                illness = input("Enter the patient's illness: ")
+                name = input("Enter the patient's first name: ")
+                surname = input("Enter the patient's last name: ")
+                birthdate = input("Enter the patient's birthday: ")
+                phone = input("Enter the patient's phone: ")
+                email = input("Enter the patient's email: ")
+                patient.add(name, surname, birthdate, phone, email,illness)
+                print("Done \n")
+                input("Press return to continue")
+
+            # schedule an appointment
+            elif user_selection == "schedule":
+                docID = input("Enter the id of the doctor for the appointment: ")
+                patID = input("Enter the id of the patient for the appointment: ")
+                appDate = input("Enter the date of the appointment: ")
+                appointment.schedule(patID,docID,appDate)
+                print("Done \n")
+                input("Press return to continue")
+
+            # Lookup doctor
+            elif user_selection == "lookup doctor":
+                fname = input("Please enter the doctor's first name: ")
+                lname = input("Please enter the doctor's last name: ")
+                results = doctor.fetch_doctor(fname,lname)
+                if results is not None:
+                    print(results)
+                else:
+                    print("This doctor does not exist in our database.")
+                input("Press return to continue")
+
+            # Lookup patient
+            elif user_selection == "lookup patient":
+                fname = input("Please enter the patients's first name: ")
+                lname = input("Please enter the patients's last name: ")
+                results = patient.fetch_patient(fname,lname)
+                if results is not None:
+                    print(results)
+                else:
+                    print("This patient does not exist in our database.")
+                input("Press return to continue")
+
+            # Lookup appointment
+            elif user_selection == "lookup appointment":
+                doctorId = input("Please enter the id of the appointment's doctor: ")
+                patientId = input("Please enter the id of the appointment's patient: ")
+                appointementDate = input("Please enter the date of the appointment: ")
+                results = appointment.fetch_appointment(doctorId,patientId,appointementDate)
+                if results is not None:
+                    print(results)
+                else:
+                    print("This appointment does not exist in our database.")
+                input("Press return to continue")
+
+            # view the list of doctors
+            elif user_selection == "view doctors":
+                results = doctor.fetch_all()
+                for item in results:
+                    print(item)
+                input("Press return to continue")
+
+            # view the list of patients
+            elif user_selection == "view patients":
+                results = patient.fetch_all()
+                for item in results:
+                    print(item)
+                input("Press return to continue")
+
+            # view the list of appointments
+            elif user_selection == "view appointments":
+                results = appointment.fetch_all()
+                for item in results:
+                    print(item)
+                input("Press return to continue")
+
+            # update and appointment
+            elif user_selection == "update appointment":
+                results = appointment.fetch_all()
+                for item in results:
+                    print(item)
+                Appid = input("Please enter the unique id of the appointment you'd like to update. Please see the list above for reference: ")
+                patient_id = input("Enter the appointment's new doctor id: ")
+                doctor_id = input("Enter the appointment's new patient id: ")
+                NewDate = input("Enter the appointment's new date: ")
+                appointment.update(patient_id, doctor_id, NewDate, Appid)
+                input("Press return to continue")
+
+            # update a doctor's information
+            elif user_selection == "update doctor":
+                results = doctor.fetch_all()
+                for item in results:
+                    print(item)
+                id = input("Please enter the unique id of the doctor you'd like to update. Please see the list above for reference: ")
+                specialty = input("Enter the doctor's new Specialty: ")
+                name = input("Enter the doctor's new first name: ")
+                surname = input("Enter the doctor's new last name: ")
+                birthdate = input("Enter the doctor's new birthday: ")
+                phone = input("Enter the doctor's new phone: ")
+                email = input("Enter the doctor's new email: ")
+                doctor.update(id, name, surname, birthdate, phone, email, specialty)
+                input("Press return to continue")
+
+            # update a patient's information
+            elif user_selection == "update patient":
+                results = patient.fetch_all()
+                for item in results:
+                    print(item)
+                id = input("Please enter the unique id of the patient you'd like to update. Please see the list above for reference: ")
+                illness = input("Enter the patient's new illness: ")
+                name = input("Enter the patient's new first name: ")
+                surname = input("Enter the patient's new last name: ")
+                birthdate = input("Enter the patient's new birthday: ")
+                phone = input("Enter the patient's new phone: ")
+                email = input("Enter the patient's new email: ")
+                patient.update(id, name, surname, birthdate, phone, email, illness)
+                input("Press return to continue")
+
+            # "Delete doctor": "Delete a doctor from the database",
+            elif user_selection == "delete doctor":
+                doc_id = input("Enter the id of the doctor you'd like to remove from the database: ")
+                doctor.delete(doc_id)
+                print("Done\n")
+                input("Press return to continue")
+
+            # "Delete patient": "Delete a patient from the database",
+            elif user_selection == "delete patient":
+                pat_id = input("Enter the id of the patient you'd like to remove from the database: ")
+                patient.delete(pat_id)
+                print("Done\n")
+                input("Press return to continue")
+
+            # "Delete appointment": "Delete an appointment from the database",
+            elif user_selection == "delete appointment":
+                app_id = input("Enter the id of the appointment you'd like to cancel: ")
+                appointment.delete(app_id)
+                print("Done\n")
+                input("Press return to continue")
+
+            # Reset doctor database
+            elif user_selection == "reset doctor":
+                confirm = input("This will delete all records in doctor database, continue? (y/n)").lower()
+                if confirm == "y":
+                    doctor.reset_database()
+                    print("Reset complete")
+                    input("Press return to continue")
+                else:
+                    print("Reset aborted")
+                    input("Press return to continue")
+
+            # Reset patient database
+            elif user_selection == "reset patient":
+                confirm = input("This will delete all records in patient database, continue? (y/n)").lower()
+                if confirm == "y":
+                    patient.reset_database()
+                    print("Reset complete")
+                    input("Press return to continue")
+                else:
+                    print("Reset aborted")
+                    input("Press return to continue")
+
+            # Reset appointments database
+            elif user_selection == "reset appointments":
+                confirm = input("This will delete all records in appointments database, continue? (y/n)").lower()
+                if confirm == "y":
+                    appointment.reset_database()
+                    print("Reset complete")
+                    input("Press return to continue")
+                else:
+                    print("Reset aborted")
+                    input("Press return to continue")
+
+            # Exit the program
+            else:
+                if user_selection != "exit":
+                    print("Invalid selection, please try again\n")
+
+project = HospitalAdminPortal()
+project.run()
+
+
+
+

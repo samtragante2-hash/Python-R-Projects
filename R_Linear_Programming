@@ -1,0 +1,27 @@
+/*
+This R script builds and solves an integer linear programming (ILP) model using the lpSolve package to maximize total profit or revenue from Rue La La products
+under certain price and selection constraints. It defines 15 decision variables (likely representing price or product combinations), sets their objective coefficients (profits),
+and adds constraints that limit average prices, maintain price consistency between product groups, and ensure one product is chosen per group. The model is solved to find the
+optimal combination of items that yields the highest objective value while satisfying all constraints.
+*/
+
+library(lpSolve)
+library(lpSolveAPI)
+
+#Rue La La
+RueLaLaIP <- make.lp(0,15)
+set.objfn(RueLaLaIP,c(3735,4036.5,4188,3990,2694,4233,2242.5,2094,1795.5,1796,6225,6578,6631,3990,4041))
+add.constraint(RueLaLaIP,(c(24.9,29.9,34.9,39.9,44.9,24.9,29.9,34.9,39.9,44.9,24.9,29.9,34.9,39.9,44.9)/3),"<=",29.9)
+add.constraint(RueLaLaIP,c(24.9,29.9,34.9,39.9,44.9,-24.9,-29.9,-34.9,-39.9,-44.9,0,0,0,0,0),">=",0)
+add.constraint(RueLaLaIP,c(0,0,0,0,0,24.9,29.9,34.9,39.9,44.9,-24.9,-29.9,-34.9,-39.9,-44.9),">=",0)
+add.constraint(RueLaLaIP,c(1,1,1,1,1,0,0,0,0,0,0,0,0,0,0),"=",1)
+add.constraint(RueLaLaIP,c(0,0,0,0,0,1,1,1,1,1,0,0,0,0,0),"=",1)
+add.constraint(RueLaLaIP,c(0,0,0,0,0,0,0,0,0,0,1,1,1,1,1),"=",1)
+
+lp.control(RueLaLaIP,sense="max")
+set.type(RueLaLaIP,c(1:5),"integer")
+write.lp(RueLaLaIP,filename="RueLalaIP")
+
+solve(RueLaLaIP)
+get.objective(RueLaLaIP)
+get.variables(RueLaLaIP)

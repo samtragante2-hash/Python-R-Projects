@@ -1,0 +1,85 @@
+/*
+This script builds and solves three linear/integer programming models with lpSolve/lpSolveAPI. MoveItIP is a classic transportation problem: six decision variables ship goods from 
+Plant A/B to Distribution Centers 1–3 with plant capacities (≤50 each), fixed DC throughputs (=20 each), a total demand cap (≤60), and a min-cost objective. TruckIP models a network flow / routing
+problem over 14 legs: one unit leaves the source (≤1), flow is conserved at intermediate hubs (equalities with +1/−1 pattern), at least one unit reaches the sinks (≥1), and the objective is to minimize route cost.
+JaneCarIP formulates a shortest-path–style model over 15 arcs with flow conservation at nodes 2–5, a demand constraint to reach the destination, some arcs forced integer (discrete route choices), 
+and a min-cost objective. For each model, it writes an LP file, solves it, and returns the optimal objective value and decision vector.
+*/ 
+
+library(lpSolve)
+library(lpSolveAPI)
+
+#Move It Company
+MoveItIP <- make.lp(0,6)
+set.objfn(MoveItIP,c(800,600,700,800,400,500))
+#Source Constraints
+add.constraint(MoveItIP, c(1,0,1,0,1,0),"<=",50) #Plant A
+add.constraint(MoveItIP,c(0,1,0,1,0,1),"<=",50) #Plant B
+#Transshipment Constraints
+add.constraint(MoveItIP,c(1,1,0,0,0,0),"=",20) #Distribution Center 1
+add.constraint(MoveItIP,c(0,0,1,1,0,0),"=",20) #Distribution Center 2
+add.constraint(MoveItIP,c(0,0,0,0,1,1),"=",20) #Distribution Center 3
+#Demand Constraints
+add.constraint(MoveItIP,c(1,1,1,1,1,1),"<=",60) 
+
+lp.control(MoveItIP,sense="min")
+write.lp(MoveItIP, filename="MoveItIP")
+
+solve(MoveItIP)
+get.objective(MoveItIP)
+get.variables(MoveItIP)
+
+#TruckIP     
+TruckIP <- make.lp(0,14) 
+set.objfn(TruckIP,c(400,950,800,1800,900,1100,600,600,1200,900,1000,400,600,1300))
+#Source Constraints
+add.constraint(TruckIP,c(1,1,1,0,0,0,0,0,0,0,0,0,0,0),"<=",1)
+#transshipment constraint
+add.constraint(TruckIP,c(1,0,0,-1,-1,0,0,0,0,0,0,0,0,0),"=",0)
+add.constraint(TruckIP,c(0,1,0,0,0,-1,-1,0,0,0,0,0,0,0),"=",0)
+add.constraint(TruckIP,c(0,0,1,0,0,0,0,-1,-1,0,0,0,0,0),"=",0)
+add.constraint(TruckIP,c(0,0,0,1,0,1,0,0,0,0,0,-1,0,0),"=",0)
+add.constraint(TruckIP,c(0,0,0,0,1,0,1,1,0,-1,-1,0,0,-1),"=",0)
+add.constraint(TruckIP,c(0,0,0,0,0,0,0,0,1,0,1,0,-1,0),"=",0)
+#demand constraint
+add.constraint(TruckIP,c(0,0,0,0,0,0,0,0,0,0,0,1,1,1),">=",1)
+
+lp.control(TruckIP,sense="min")
+write.lp(TruckIP,filename="TruckIp")
+
+solve(TruckIP)
+get.objective(TruckIP)
+get.variables(TruckIP)
+
+#JaneCarIP
+JaneCarIP <- make.lp(0,15)
+set.objfn(JaneCarIP,c(7,12,21,31,44,7,12,21,31,7,12,21,7,12,7))
+#Source Constraints
+add.constraint(JaneCarIP,c(1,1,1,1,1,0,0,0,0,0,0,0,0,0,0),"<=",1)
+#Transshipment constraints
+add.constraint(JaneCarIP,c(-1,0,0,0,0,1,1,1,1,0,0,0,0,0,0),"=",0) #Node 2
+add.constraint(JaneCarIP,c(0,-1,0,0,0,-1,0,0,0,1,1,1,0,0,0),"=",0) #Node 3
+add.constraint(JaneCarIP,c(0,0,-1,0,0,0,-1,0,0,-1,0,0,1,1,0),"=",0) #Node 4
+add.constraint(JaneCarIP,c(0,0,0,-1,0,0,0,-1,0,0,-1,0,0,-1,1),"=",0) #Node 5
+#Demand constraints
+add.constraint(JaneCarIP,c(0,0,0,0,-1,0,0,0,-1,0,0,-1,0,-1,-1),"<=",-1)
+
+set.type(JaneCarIP,c(1:6),"integer")
+
+lp.control(JaneCarIP,sense="min")
+write.lp(JaneCarIP,filename="JaneCarIP")
+
+solve(JaneCarIP)
+get.objective(JaneCarIP)
+get.variables(JaneCarIP)
+
+
+
+
+
+
+
+
+
+
+
